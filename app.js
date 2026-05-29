@@ -83,6 +83,12 @@ function applyLogo() {
 function bootstrap(data) {
   processData(data);
   buildDualTree();
+  // Inicia com tudo recolhido — apenas o card raiz visível
+  const visit = n => {
+    if (n.children.length > 0 && n.parent !== null) State.collapsed.add(n.id);
+    n.children.forEach(visit);
+  };
+  if (State.tree) visit(State.tree);
   reflow();
   renderAll();
   initInteractions();
