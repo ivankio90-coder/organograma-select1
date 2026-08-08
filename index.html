@@ -678,7 +678,7 @@ body:has(.breadcrumb:not(.hidden)) .canvas-container { top: 104px; }
     <button id="btnZoomIn"    class="btn-icon" title="Zoom +"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
     <button id="btnZoomOut"   class="btn-icon" title="Zoom -"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
     <button id="btnZoomReset" class="btn-icon" title="Resetar zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
-    <button id="btnPrint"      class="btn-icon" title="Imprimir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+    <button id="btnExportXls" title="Exportar Excel" onclick="exportExcel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></button><button id="btnPrint"      class="btn-icon" title="Imprimir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
     <button id="btnFullscreen" class="btn-icon" title="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
     <button id="btnExportPng"  class="btn-icon" title="Exportar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
   </div>
@@ -1641,3 +1641,76 @@ document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
+<script>
+function exportExcel() {
+  if (!State || !State.colaboradores || !State.colaboradores.length) {
+    alert('Dados ainda nao carregados.');
+    return;
+  }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var cols = ['Setor','Nome Completo','Cargo','E-mail','Telefone','Cidade','Estado','Area de Atuacao','Status'];
+  var thStyle = 'background:#5328C4;color:#fff;font-weight:700;padding:6px 8px;border:1px solid #3D1A9E';
+  var tdStyle = 'padding:5px 8px;border:1px solid #CCC';
+  function corCargo(c) {
+    if (!c) return '#FFF';
+    c = c.toLowerCase();
+    if (c.indexOf('presidente')>=0)  return '#D0B8F8';
+    if (c.indexOf('superintend')>=0) return '#B4D7FF';
+    if (c.indexOf('gerente')>=0)     return '#C8E6C9';
+    if (c.indexOf('coordenador')>=0||c.indexOf('coordenadora')>=0) return '#FFF9C4';
+    if (c.indexOf('supervisor')>=0||c.indexOf('supervisora')>=0)   return '#FFE0B2';
+    if (c.indexOf('analista')>=0)    return '#F5F5F5';
+    return '#FFF';
+  }
+  function rowsForSetor(setorId) {
+    var colabs = (State.colabBySetor[setorId]||[]).slice();
+    colabs.sort(function(a,b){ return cargoRank(a.CARGO)-cargoRank(b.CARGO); });
+    var rows = [];
+    colabs.forEach(function(c) {
+      var sn = State.setores.find(function(s){ return s.ID_SETOR===c.SETOR_ID; });
+      var bg = corCargo(c.CARGO);
+      var stC = c.STATUS==='Ativo'?'#1A6B1A':c.STATUS==='Inativo'?'#B00020':'#7A6500';
+      rows.push('<tr>'+
+        '<td style="background:'+bg+';'+tdStyle+'">'+esc(sn?sn.NOME_SETOR:'')+'</td>'+
+        '<td style="background:'+bg+';'+tdStyle+';font-weight:600">'+esc(c.NOME_COMPLETO||'')+'</td>'+
+        '<td style="background:'+bg+';'+tdStyle+'">'+esc(c.CARGO||'')+'</td>'+
+        '<td style="'+tdStyle+'">'+esc(c.EMAIL||'')+'</td>'+
+        '<td style="'+tdStyle+'">'+esc(c.TELEFONE||'')+'</td>'+
+        '<td style="'+tdStyle+'">'+esc(c.CIDADE||'')+'</td>'+
+        '<td style="'+tdStyle+'">'+esc(c.ESTADO||'')+'</td>'+
+        '<td style="'+tdStyle+'">'+esc(c.AREA_ATUACAO||'')+'</td>'+
+        '<td style="'+tdStyle+';color:'+stC+';font-weight:700">'+esc(c.STATUS||'')+'</td>'+
+      '</tr>');
+    });
+    var subs = State.setores.filter(function(s){ return s.SETOR_PAI===setorId; });
+    subs.sort(function(a,b){ return (Number(a.ORDEM)||99)-(Number(b.ORDEM)||99); });
+    subs.forEach(function(sub){ rows=rows.concat(rowsForSetor(sub.ID_SETOR)); });
+    return rows;
+  }
+  var roots = State.setores.filter(function(s){
+    return !s.SETOR_PAI||!State.setores.find(function(x){ return x.ID_SETOR===s.SETOR_PAI; });
+  });
+  var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>';
+  roots.forEach(function(root) {
+    var rows = rowsForSetor(root.ID_SETOR);
+    if (!rows.length) return;
+    html += '<h3 style="color:#5328C4">'+esc(root.NOME_SETOR)+'</h3>';
+    html += '<table border="1"><tr>'+cols.map(function(h){ return '<th style="'+thStyle+'">'+h+'</th>'; }).join('')+'</tr>'+rows.join('')+'</table><br/>';
+  });
+  var ativos=State.colaboradores.filter(function(c){return c.STATUS==='Ativo';}).length;
+  var inativos=State.colaboradores.filter(function(c){return c.STATUS==='Inativo';}).length;
+  html += '<h3 style="color:#5328C4">Resumo</h3><table border="1"><tr><th style="'+thStyle+'">Indicador</th><th style="'+thStyle+'">Total</th></tr>';
+  html += '<tr><td style="'+tdStyle+'">Total</td><td style="'+tdStyle+';font-weight:700;text-align:center">'+State.colaboradores.length+'</td></tr>';
+  html += '<tr><td style="'+tdStyle+';color:#1A6B1A">Ativos</td><td style="'+tdStyle+';font-weight:700;text-align:center;color:#1A6B1A">'+ativos+'</td></tr>';
+  html += '<tr><td style="'+tdStyle+';color:#B00020">Inativos</td><td style="'+tdStyle+';font-weight:700;text-align:center;color:#B00020">'+inativos+'</td></tr>';
+  html += '</table></body></html>';
+  var blob = new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  a.href=url; a.download='Organograma-Select-'+hoje+'.xls';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+}
+</script>
