@@ -1589,7 +1589,7 @@ function exportExcel() {
 }
 
 function initExport() {
-  $('btnExportXls').addEventListener('click', () => exportExcel());
+  
   $('btnPrint').addEventListener('click',      () => window.print());
   $('btnFullscreen').addEventListener('click', () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); else document.exitFullscreen?.(); });
   $('btnExportPng').addEventListener('click',  () => alert('Win → Snipping Tool | Mac → Cmd+Shift+4'));
