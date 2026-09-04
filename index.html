@@ -999,15 +999,18 @@ function buildDualTree() {
 function cargoRank(c) {
   if (!c) return 99;
   c = c.toLowerCase();
-  if (c.includes('presidente'))      return 1;
-  if (c.includes('diretor'))         return 2;
-  if (c.includes('superintendente')) return 3;
-  if (c.includes('gerente'))         return 4;
-  if (c.includes('coordenador'))     return 5;
-  if (c.includes('supervisor'))      return 6;
-  if (c.includes('analista'))        return 7;
-  if (c.includes('assistente'))      return 8;
-  if (c.includes('auxiliar'))        return 9;
+  // Radicais em vez de palavras exatas — cobrem tanto a forma "pessoa"
+  // (Coordenador, Gerente) quanto a forma "área/função" (Coordenação,
+  // Gerência), que são usadas de forma intercambiável na planilha.
+  if (c.includes('presid'))                            return 1;
+  if (c.includes('diretor'))                            return 2;
+  if (c.includes('superintend'))                        return 3;
+  if (c.includes('gerente') || c.includes('gerênc') || c.includes('gerenc')) return 4;
+  if (c.includes('coorden'))                            return 5;
+  if (c.includes('supervis'))                            return 6;
+  if (c.includes('analista'))                            return 7;
+  if (c.includes('assistente'))                          return 8;
+  if (c.includes('auxiliar'))                            return 9;
   return 10;
 }
 
