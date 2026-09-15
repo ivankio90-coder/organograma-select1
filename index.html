@@ -272,7 +272,10 @@ body:has(.breadcrumb:not(.hidden)) .canvas-container { top: 104px; }
   cursor: pointer;
   transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
   overflow: hidden;  /* CRÍTICO: garante que NADA vaze para fora */
-  animation: cardEntrance 280ms cubic-bezier(0.34,1.56,0.64,1) both;
+  /* animação removida daqui — agora vive numa classe separada (.card-entrance)
+     que é removida sozinha após terminar, evitando que o elemento fique
+     permanentemente "promovido" a uma camada de composição do navegador,
+     o que o html2canvas não consegue capturar corretamente na exportação. */
   display: flex;
   flex-direction: column;
 }
@@ -281,6 +284,7 @@ body:has(.breadcrumb:not(.hidden)) .canvas-container { top: 104px; }
   from { opacity:0; transform:scale(0.82) translateY(12px); }
   to   { opacity:1; transform:scale(1) translateY(0); }
 }
+.card-entrance { animation: cardEntrance 280ms cubic-bezier(0.34,1.56,0.64,1) both; }
 
 .sector-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); border-color: var(--primary-light); z-index: 10; }
 .sector-card.active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,0.18), var(--shadow-lg); }
@@ -849,7 +853,7 @@ body:has(.breadcrumb:not(.hidden)) .canvas-container { top: 104px; }
   <div class="zoom-controls">
     <button class="zoom-btn" onclick="document.getElementById('btnZoomOut').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     <span id="zoomLabel" class="zoom-label">100%</span>
-    <button class="zoom-btn" onclick="document.getElementById('btnZoomIn').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    <button class="zoom-btn" onclick="document.getElementById('btnZoomIn').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/></svg></button>
   </div>
 </div>
 <div id="canvasContainer" class="canvas-container">
@@ -1244,7 +1248,12 @@ function renderCards() {
     const pos=State.layout[n.id];
     if (!pos) return;
     const el=n.type===NODE_COLAB ? buildColabCard(n,pos) : buildSetorCard(n,pos);
+    el.classList.add('card-entrance');
     el.style.animationDelay=Math.min(delay*28,500)+'ms';
+    // Remove a classe da animação sozinha quando ela termina, para o card não
+    // ficar "marcado" para sempre como tendo uma animação (o que impede a
+    // exportação de capturá-lo corretamente depois — ver nota no CSS).
+    el.addEventListener('animationend', () => el.classList.remove('card-entrance'), { once: true });
     frag.appendChild(el);
     delay++;
     if (!State.collapsed.has(n.id)) n.children.forEach(traverse);
@@ -1867,13 +1876,33 @@ async function runExport(format) {
   await new Promise(r => setTimeout(r, 60));
 
   const world = dom.world;
+  const container = dom.container;
   const savedTransform = world.style.transform;
   const savedActive = State.activeCard;
+  // Guarda o estilo original do contêiner: ele é "position: fixed" + "overflow:
+  // hidden" para funcionar como janela de canvas pannable, mas isso faz o
+  // html2canvas renderizar mal tudo que fica fora da área visível na tela.
+  // Removemos essa restrição só durante a captura (escondido pelo overlay de
+  // carregamento) e devolvemos ao normal depois.
+  const savedContainerPosition = container.style.position;
+  const savedContainerOverflow = container.style.overflow;
+  const savedContainerTop      = container.style.top;
+  const savedContainerLeft     = container.style.left;
   setActiveCard(null); // remove destaque de seleção antes da foto
 
   try {
+    container.style.position = 'static';
+    container.style.overflow = 'visible';
+    container.style.top  = 'auto';
+    container.style.left = 'auto';
     world.style.transform = 'translate(0px,0px) scale(1)';
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // Pequena espera para o layout se acomodar após remover o clipping do
+    // contêiner (a animação de entrada já está desligada acima, então não é
+    // mais necessário esperar por ela).
+    // Margem de segurança: cobre o pior caso de alguém clicar em "Exportar"
+    // quase imediatamente após expandir uma ramificação grande (atraso máximo
+    // de entrada dos cards é 500ms + 280ms de duração da animação).
+    await new Promise(r => setTimeout(r, 850));
 
     const canvas = await html2canvas(world, {
       backgroundColor: '#f0edf9',
@@ -1907,6 +1936,10 @@ async function runExport(format) {
     alert('Não foi possível gerar o arquivo. Tente recolher parte da estrutura e exportar novamente (estruturas muito grandes podem falhar).');
   } finally {
     world.style.transform = savedTransform;
+    container.style.position = savedContainerPosition;
+    container.style.overflow = savedContainerOverflow;
+    container.style.top  = savedContainerTop;
+    container.style.left = savedContainerLeft;
     setActiveCard(savedActive);
     showExportLoading(false);
   }
